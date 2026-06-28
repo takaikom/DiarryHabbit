@@ -1,6 +1,22 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-JQ9Z49NDNC"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-JQ9Z49NDNC');
+  </script>
+  <script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "xebs9pq2lq");
+  </script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#7C5CFF">
@@ -167,6 +183,10 @@
   .urlwrap .rinput{padding-right:38px}
   .urlclear{position:absolute; right:6px; width:26px; height:26px; border:none; border-radius:50%; background:var(--line); color:var(--ink); cursor:pointer; font-size:13px; display:grid; place-items:center; opacity:.8}
   .urlclear:active{opacity:1}
+  .urlrow{display:flex; gap:8px; align-items:stretch}
+  .urlrow .urlwrap{flex:1}
+  .connectbtn{flex:0 0 auto; padding:0 16px; border-radius:10px}
+  #newNoteBtn{border-top:1px solid var(--line)}
   .btn.block{width:100%}
   .cardnote{font-size:12px; color:var(--muted); margin:7px 6px 0; line-height:1.5}
   #noteList .setrow{padding:13px 15px; border-bottom:1px solid var(--line); margin:0}
@@ -261,9 +281,10 @@
 </div>
 
 <div class="sheet-bg" id="setBg"></div>
-<div class="sheet" id="setSheet">
+<div class="sheet editsheet" id="setSheet">
   <div class="grab"></div>
   <h2>⚙️ 設定</h2>
+  <div class="sheetbody">
 
   <!-- ユーザー（アカウント） -->
   <div class="setgroup">ユーザー</div>
@@ -271,20 +292,23 @@
   <div class="card" style="margin-top:10px">
     <div class="row col">
       <span class="rlabel">名前</span>
-      <input type="text" id="cfgName" class="rinput" placeholder="名前（未登録）" style="font-family:inherit">
-    </div>
-    <div class="row col">
-      <span class="rlabel">GAS ウェブアプリ URL</span>
       <div class="urlwrap">
-        <input type="text" id="cfgUrl" class="rinput" placeholder="https://script.google.com/macros/s/.../exec">
-        <button type="button" class="urlclear" id="urlClearBtn" title="クリア">✕</button>
+        <input type="text" id="cfgName" class="rinput" placeholder="かなお" style="font-family:inherit">
+        <button type="button" class="urlclear" id="nameClearBtn" title="クリア">✕</button>
       </div>
     </div>
     <div class="row col">
-      <button class="btn primary block" id="connectBtn">🔗 接続して保存</button>
+      <span class="rlabel">GAS ウェブアプリ URL</span>
+      <div class="urlrow">
+        <div class="urlwrap">
+          <input type="text" id="cfgUrl" class="rinput" placeholder="https://script.google.com/macros/s/.../exec">
+          <button type="button" class="urlclear" id="urlClearBtn" title="クリア">✕</button>
+        </div>
+        <button class="btn primary connectbtn" id="connectBtn">接続</button>
+      </div>
     </div>
   </div>
-  <p class="cardnote">名前とURLを入れて「接続して保存」を押すと、このユーザーに登録されます。GASに名前が登録済みなら自動で反映されます。</p>
+  <p class="cardnote">名前とURLを入れて「接続」を押すと、このユーザーに登録されます。GASに名前が登録済みなら自動で反映されます。</p>
 
   <!-- 日記帳 -->
   <div class="setgroup">日記帳</div>
@@ -337,6 +361,10 @@
     <button class="row tap" id="delAllBtn"><span class="rlabel danger">すべてのユーザーを削除</span><span class="chev">›</span></button>
   </div>
   <div style="height:16px"></div>
+  </div>
+  <div class="sheetfoot">
+    <button class="btn ghost slim block" id="setCloseBtn">閉じる</button>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -365,14 +393,16 @@ function loadCfg(){
   cfg=Object.assign({users:[], currentId:"", theme:"light", lockHash:""}, raw);
   // migrate old single-user config (name/gasUrl/note/notes at top level)
   if((!cfg.users||!cfg.users.length) && (raw.name||raw.gasUrl||raw.note)){
-    const u={id:uid(), name:raw.name||"ユーザー1", gasUrl:raw.gasUrl||"", note:raw.note||"日記", notes:raw.notes||["日記"]};
+    const u={id:uid(), name:raw.name||"", gasUrl:raw.gasUrl||"", note:raw.note||"日記", notes:raw.notes||["日記"]};
     cfg.users=[u]; cfg.currentId=u.id;
   }
   if(!cfg.users.length){
-    const u={id:uid(), name:"ユーザー1", gasUrl:"", note:"日記", notes:["日記"]};
+    const u={id:uid(), name:"", gasUrl:"", note:"日記", notes:["日記"]};
     cfg.users=[u]; cfg.currentId=u.id;
   }
   if(!cfg.users.find(u=>u.id===cfg.currentId)) cfg.currentId=cfg.users[0].id;
+  // 旧バージョンが自動でつけた仮の名前は空にしてプレースホルダー表示に戻す
+  cfg.users.forEach(u=>{ if(u.name==="ユーザー1") u.name=""; });
   migrateDataKeys();
 }
 /* 旧バージョンはデータをGAS URLで保存していた。ユーザーIDベースへ一度だけ移行する */
@@ -872,6 +902,8 @@ function init(){
   document.getElementById("delAllBtn").onclick=delAllUsers;
   document.getElementById("connectBtn").onclick=connectUrl;
   document.getElementById("urlClearBtn").onclick=clearUrl;
+  document.getElementById("nameClearBtn").onclick=()=>{const f=document.getElementById("cfgName");f.value="";f.focus();};
+  document.getElementById("setCloseBtn").onclick=closeSheets;
   document.getElementById("setBtn").onclick=()=>{renderUserSettingsList();renderNoteList();openSheet("setSheet");};
   document.getElementById("sheetBg").onclick=closeSheets;
   document.getElementById("setBg").onclick=closeSheets;
